@@ -39,24 +39,28 @@ library(tidyr)
     
   #### Creates dataframe with nrows based on state pop
     state_rows <- function(df = tidy_mtcars(), 
-                            states = state_pop_fetch()){
+                           states = state_pop_fetch(),
+                           numrows = nrow(states),
+                           weights = quo(mpg)){
       
       states <- states %>%
-        mutate(pop = round(pop / 10000, 0)) %>%
-        uncount(pop)
+        mutate(pop = round(pop / 10000, 0),
+               weights = pop) %>%
+        uncount(weights)
       
       car_rows <- df %>%
         select(-model) %>%
         sample_n(df,
                  replace = TRUE,
                  size = nrow(states),
-                 weight = mpg)
+                 weight = !!weights)
       
       final_df <- bind_cols(states, car_rows)
       
       return(final_df)
     }
     
-  #### 
+  #### Add ticket data to long states data frame ####
+    
     
   
