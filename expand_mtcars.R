@@ -50,10 +50,11 @@ library(XML)
     state_rows <- function(df = tidy_mtcars(), 
                            states = state_pop_fetch(),
                            numrows = nrow(states),
-                           weights = quo(mpg)){
+                           weights = quo(mpg),
+                           pop_div = 10000){
       
       states <- states %>%
-        mutate(pop = round(pop / 10000, 0),
+        mutate(pop = round(pop / pop_div, 0),
                weights = pop) %>%
         uncount(weights)
       
@@ -72,13 +73,15 @@ library(XML)
   #### Add modification noise to long states data frame ####
     # Creates random vairable, assigns mods according to that.
     # Increases hp, decreases weight.
-    add_mods <- function(df){
+    add_mods <- function(df, hp_mean = 1.2, hp_sd = .05, wt_mean = .9,
+                         wt_sd = .05, mod_cut = 1.5){
       
       df <- df %>%
         mutate(mod_num = rnorm(n = n()),
-               hp_num = rnorm(n = n(), mean = 1.2, sd = .05),
-               wt_num = rnorm(n = n(), mean = .9, sd = .05),
-               mod_flag = ifelse(mod_num <= 1.5 & mod_num >= -1.5, FALSE, TRUE),
+               hp_num = rnorm(n = n(), mean = hp_mean, sd = hp_sd),
+               wt_num = rnorm(n = n(), mean = wt_mean, sd = wt_sd),
+               mod_flag = ifelse(mod_num <= mod_cut & mod_num >= mod_cut * -1, 
+                                 FALSE, TRUE),
                hp = ifelse(mod_flag == TRUE, hp * hp_num, hp),
                wt_lbs = ifelse(mod_flag == TRUE, wt_lbs * wt_num, wt_lbs),
                hp = round(hp, 0),
@@ -94,7 +97,7 @@ library(XML)
     # Selects ticketed cars based on hp/lb ratio
     # Imputes speed of ticket based on speed limit + hp/lb ratio
     # Imputes price of ticket based on num rows, rounded to 100
-    add_tickets <- function(df, 
+    add_tickets <- function(df, ticket_mean = 1000, ticket_sd = 100,
                             speed_lim_loc = "https://en.wikipedia.org/wiki/Speed_limits_in_the_United_States"){
       
       speed_lim_table <- htmltab(speed_lim_loc, 2) %>%
@@ -112,10 +115,10 @@ library(XML)
                                   sd = sd(ratio)),
                ticket_flag = ifelse(ticket_num < .6 * ratio, TRUE, FALSE),
                ticket_amount_num = rnorm(n = n(),
-                                         mean = 1000,
-                                         sd = 100),
+                                         mean = ticket_mean,
+                                         sd = ticket_sd),
                ticket_amount = ifelse(ticket_flag == TRUE, 
-                                      round(ticket_amount_num, 20),
+                                      round(ticket_amount_num, 0),
                                       0)) %>%
         select(-ticket_num, -ticket_flag, - ticket_amount_num, -ratio)
       
