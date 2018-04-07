@@ -12,6 +12,7 @@ library(readxl)
 library(tidycensus)
 library(tidyr)
 library(htmltab)
+library(openxlsx)
 
 #### State fips location ####
 # https://www2.census.gov/geo/docs/reference/codes/national_county.txt
@@ -158,8 +159,90 @@ library(htmltab)
   #### Long form wrapper function ####
     # Outputs long form data set, pre fracturing
     long_output <- function(seed_num = 314){
+      
       df <- state_rows(seed_num = seed_num) %>%
         add_mods(seed_num = seed_num) %>%
         add_tickets(seed_num = seed_num)
+      
       return(df)
     }
+    
+  #### Function for determining how output will be setup ####
+    output_master <- function(df = long_output(),
+                              hold_outs = c("06"),
+                              seed_num = 314){
+      
+      set.seed(seed_num)
+      
+      master_df <- df %>%
+        select(fips, state, id) %>%
+        filter(!(fips %in% hold_outs)) %>%
+        distinct() %>%
+        mutate(file_type = NA,
+               file_rand = sample(c("single", "multi", "xlsx"), size = n(), replace = TRUE))
+      
+      return(master_df)  
+    }
+    
+  #### Function for writing single .csvs ####
+    write_singles <- function(df = long_output(),
+                              master = output_master(),
+                              seed_num = 314,
+                              hold_outs = c("06")){
+      
+      set.seed(seed_num)
+      
+      master <- master %>%
+        filter(file_rand == "single") %>%
+        mutate(name_switch = sample(c(TRUE, FALSE), size = n(), replace = TRUE))
+      
+      for(i in 1:nrow(master)){
+        
+        cur_fips <- master$fips[i]
+        temp <- master %>%
+          filter(fips == cur_fips)
+        
+        if(master[i, "name_switch"] == TRUE){
+          
+          name_stem <- unique(temp$state)
+          temp %>%
+            select(-fips, -state)
+          write.csv(temp,
+                    paste0("./output/", name_stem, ".csv"),
+                    row.names = FALSE)
+        }
+        
+        if(master[i, "name_switch"] == FALSE){
+          
+          name_stem <- unique(temp$fips)
+          temp %>%
+            select(-state, -fips)
+          write.csv(temp,
+                    paste0("./output/", name_stem, ".csv"),
+                    row.names = FALSE)
+        }
+      }
+      
+    }
+    
+  #### Writes xlsx ####
+    write_xlsx <- function(df = long_output(), hold_outs = c("06")){
+      
+      for(h in 1:length(hold_outs)){
+        
+        wb <- createWorkbook()
+        
+        temp <- df %>%
+          filter(fips %in% hold_outs[h])
+        
+        ids <- unique(temp$id)
+     
+        for(i in 1:length(ids)){
+          cur_rows <- temp %>%
+            filter(id == ids[i])
+          addWorksheet(wb, paste0(ids[i]))
+          writeData(wb, paste0(ids[i]), cur_rows, rowNames = FALSE)
+        }
+        saveWorkbook(wb, paste0("./output/", hold_outs[h], ".xlsx"), overwrite = TRUE)
+      }
+    }  
