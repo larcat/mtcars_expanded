@@ -24,7 +24,7 @@ library(openxlsx)
      tidy_mtcars <- df %>%
        tibble::rownames_to_column("model") %>%
        mutate(wt_lbs = wt * 1000,
-              id = row_number()) %>%
+              id = paste0("car_type_", row_number())) %>%
        select(-wt)
      
      row.names(tidy_mtcars) <- 1:nrow(mtcars)
@@ -175,11 +175,9 @@ library(openxlsx)
       set.seed(seed_num)
       
       master_df <- df %>%
-        select(fips, state, id) %>%
+        select(fips, state) %>%
         filter(!(fips %in% hold_outs)) %>%
-        distinct() %>%
-        mutate(file_type = NA,
-               file_rand = sample(c("single", "multi", "xlsx"), size = n(), replace = TRUE))
+        distinct()
       
       return(master_df)  
     }
@@ -193,38 +191,48 @@ library(openxlsx)
       set.seed(seed_num)
       
       master <- master %>%
-        filter(file_rand == "single") %>%
         mutate(name_switch = sample(c(TRUE, FALSE), size = n(), replace = TRUE))
       
-      for(i in 1:nrow(master)){
+      for(i in 1:length(unique(master$name_switch))){
         
-        cur_fips <- master$fips[i]
         temp <- master %>%
-          filter(fips == cur_fips)
+          filter(name_switch == unique(master$name_switch)[i])
         
-        if(master[i, "name_switch"] == TRUE){
-          
-          name_stem <- unique(temp$state)
-          temp %>%
-            select(-fips, -state)
-          write.csv(temp,
-                    paste0("./output/", name_stem, ".csv"),
-                    row.names = FALSE)
-        }
+        print(head(temp))
         
-        if(master[i, "name_switch"] == FALSE){
+        for(j in 1:length(unique(temp$fips))){
           
-          name_stem <- unique(temp$fips)
-          temp %>%
-            select(-state, -fips)
-          write.csv(temp,
-                    paste0("./output/", name_stem, ".csv"),
-                    row.names = FALSE)
+          cur_fips_value <- unique(temp$fips)[j] 
+          
+          cur_temp <- df %>%
+            filter(fips == cur_fips_value)
+          
+          print(head(cur_temp))
+          
+          if(unique(master$name_switch)[i] == TRUE){
+            
+            name_stem <- unique(cur_temp$state)
+            cur_temp %>%
+              select(-fips, -state)
+            print(head(cur_temp))
+            write.csv(cur_temp,
+                      paste0("./output/", name_stem, ".csv"),
+                      row.names = FALSE)
+          }
+          
+          if(unique(master$name_switch)[i] == FALSE){
+            
+            name_stem <- unique(cur_temp$fips)
+            cur_temp %>%
+              select(-state, -fips)
+            write.csv(cur_temp,
+                      paste0("./output/", name_stem, ".csv"),
+                      row.names = FALSE)
+          }
         }
       }
-      
     }
-    
+      
   #### Writes xlsx ####
     write_xlsx <- function(df = long_output(), hold_outs = c("06")){
       
