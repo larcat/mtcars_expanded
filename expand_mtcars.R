@@ -212,8 +212,8 @@ library(openxlsx)
           if(unique(master$name_switch)[i] == TRUE){
             
             name_stem <- unique(cur_temp$state)
-            cur_temp %>%
-              select(-fips, -state)
+            cur_temp <- cur_temp %>%
+              select(-fips, -state, -pop, -mod_flag)
             print(head(cur_temp))
             write.csv(cur_temp,
                       paste0("./output/", name_stem, ".csv"),
@@ -223,8 +223,9 @@ library(openxlsx)
           if(unique(master$name_switch)[i] == FALSE){
             
             name_stem <- unique(cur_temp$fips)
-            cur_temp %>%
-              select(-state, -fips)
+            cur_temp <- cur_temp %>%
+              select(-state, -fips, -pop, -mod_flag)
+            print(head(cur_temp))
             write.csv(cur_temp,
                       paste0("./output/", name_stem, ".csv"),
                       row.names = FALSE)
