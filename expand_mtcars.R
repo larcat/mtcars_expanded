@@ -11,7 +11,7 @@ library(dplyr)
 library(readxl)
 library(tidycensus)
 library(tidyr)
-library(XML)
+library(htmltab)
 
 #### State fips location ####
 # https://www2.census.gov/geo/docs/reference/codes/national_county.txt
@@ -45,13 +45,16 @@ library(XML)
         
       return(state_pops)
     }
-    
+  
   #### Creates dataframe with nrows based on state pop
     state_rows <- function(df = tidy_mtcars(), 
                            states = state_pop_fetch(),
                            numrows = nrow(states),
                            weights = quo(mpg),
-                           pop_div = 10000){
+                           pop_div = 10000,
+                           seed_num = 314){
+      
+      set.seed(seed_num)
       
       states <- states %>%
         mutate(pop = round(pop / pop_div, 0),
@@ -74,7 +77,10 @@ library(XML)
     # Creates random vairable, assigns mods according to that.
     # Increases hp, decreases weight.
     add_mods <- function(df, hp_mean = 1.2, hp_sd = .05, wt_mean = .9,
-                         wt_sd = .05, mod_cut = 1.5){
+                         wt_sd = .05, mod_cut = 1.5,
+                         seed_num = 314){
+      
+      set.seed(seed_num)
       
       df <- df %>%
         mutate(mod_num = rnorm(n = n()),
@@ -98,7 +104,10 @@ library(XML)
     # Imputes speed of ticket based on speed limit + hp/lb ratio
     # Imputes price of ticket based on num rows, rounded to 100
     add_tickets <- function(df, ticket_mean = 1000, ticket_sd = 100,
-                            speed_lim_loc = "https://en.wikipedia.org/wiki/Speed_limits_in_the_United_States"){
+                            speed_lim_loc = "https://en.wikipedia.org/wiki/Speed_limits_in_the_United_States",
+                            seed_num = 314){
+      
+      set.seed(seed_num)
       
       speed_lim_table <- htmltab(speed_lim_loc, 2) %>%
         select(`State or territory`,
@@ -124,13 +133,33 @@ library(XML)
       
       return(df)
     }
+
     
+    #### Fracture into individual files ####
+    
+    state_break <- function(df = long_output(),
+                            seed_num){
+      
+      sed.seed(seed_num)
+      
+        print(names(df))
+        states <- unique(df$state)
+
+        state_list <- list()
+
+        for(i in 1:length(states)){
+          curstate <- paste0(states[[i]])
+          state_list[[i]] <- df[which(df$state == curstate), ]
+        }
+
+        return(state_list)
+      }
+
   #### Long form wrapper function ####
     # Outputs long form data set, pre fracturing
-    long_output <- function(){
-      df <- state_rows() %>%
-        add_mods() %>%
-        add_tickets()
-      
+    long_output <- function(seed_num = 314){
+      df <- state_rows(seed_num = seed_num) %>%
+        add_mods(seed_num = seed_num) %>%
+        add_tickets(seed_num = seed_num)
       return(df)
     }
