@@ -254,4 +254,14 @@ library(openxlsx)
         }
         saveWorkbook(wb, paste0("./output/", hold_outs[h], ".xlsx"), overwrite = TRUE)
       }
-    }  
+    }
+  
+  #### Tidy mtcars for problem ####
+    output_car_master <- function(df = tidy_mtcars()){
+      
+      df <- df %>%
+        rename(car_type = id) %>%
+        mutate(car_type = gsub("car_type_", "", car_type))
+      
+      write.csv(df, "./output/master_car_list.csv", row.names = FALSE)
+    }
