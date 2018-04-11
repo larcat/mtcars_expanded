@@ -24,8 +24,7 @@ library(openxlsx)
      tidy_mtcars <- df %>%
        tibble::rownames_to_column("model") %>%
        mutate(wt_lbs = wt * 1000,
-              id = paste0("car_type_", row_number())) %>%
-       select(-wt)
+              id = paste0("car_type_", row_number()))
      
      row.names(tidy_mtcars) <- 1:nrow(mtcars)
      
@@ -202,18 +201,30 @@ library(openxlsx)
         
         for(j in 1:length(unique(temp$fips))){
           
+          wt_random <- sample(c(TRUE, FALSE), size = 1)
+          
           cur_fips_value <- unique(temp$fips)[j] 
           
           cur_temp <- df %>%
             filter(fips == cur_fips_value)
           
           print(head(cur_temp))
+
+          if(wt_random == TRUE){
+            cur_temp <- cur_temp %>%
+              select(-wt)
           
+          } else if(wt_random == FALSE){
+            cur_temp <- cur_temp %>%
+              select(-wt_lbs)
+          }
+                    
           if(unique(master$name_switch)[i] == TRUE){
             
             name_stem <- unique(cur_temp$state)
             cur_temp <- cur_temp %>%
               select(-fips, -state, -pop, -mod_flag)
+
             print(head(cur_temp))
             write.csv(cur_temp,
                       paste0("./output/", name_stem, ".csv"),
@@ -235,7 +246,7 @@ library(openxlsx)
     }
       
   #### Writes xlsx ####
-    write_xlsx <- function(df = long_output(), hold_outs = c("06")){
+    write_holdouts <- function(df = long_output(), hold_outs = c("06")){
       
       for(h in 1:length(hold_outs)){
         
@@ -261,7 +272,15 @@ library(openxlsx)
       
       df <- df %>%
         rename(car_type = id) %>%
-        mutate(car_type = gsub("car_type_", "", car_type))
+        mutate(car_type = gsub("car_type_", "", car_type)) %>%
+        select(-wt)
       
       write.csv(df, "./output/master_car_list.csv", row.names = FALSE)
+    }
+    
+  #### Output wrapper ####
+    mtcars_expanded_master <- function(){
+      write_singles()
+      write_holdouts()
+      output_car_master()
     }
